@@ -56,6 +56,7 @@ claude-engineering-toolkit/
 │   └── security-auditor.md
 ├── examples/                # Runnable, fixture-backed demos
 │   └── buggy-javascript/
+├── scripts/validate.mjs     # Structural checks run in CI (npm run validate)
 ├── docs/                    # Contributing guide and conventions
 │   └── CONTRIBUTING.md
 ├── .claude-plugin/          # plugin.json + marketplace.json for /plugin install
@@ -203,7 +204,8 @@ Once installed, a skill can be called directly (e.g. `/pr-description`), and Cla
 
 ## 🗺️ Roadmap
 
-- [ ] Skill/agent test harness (`toolkit test <name>`) for CI validation
+- [x] Structural validation in CI (`npm run validate`): frontmatter, tool allowlists, README tables, links, fixtures, plugin manifests
+- [ ] Behavioral test harness (`toolkit test <name>`) that runs a skill/agent against its fixture and grades the output
 - [ ] Versioned skill registry with semver and changelogs per skill
 - [ ] Multi-language template set (current templates assume a Node/Go-style repo)
 - [ ] Workflow visual debugger for step-by-step replay

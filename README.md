@@ -45,7 +45,8 @@ claude-engineering-toolkit/
 │   ├── migration-planner/
 │   ├── postmortem-draft/
 │   ├── test-impact-selector/
-│   └── claude-md-generator/
+│   ├── claude-md-generator/
+│   └── commit-splitter/
 ├── agents/                  # Subagent definitions, one flat <name>.md per agent
 │   ├── bug-fixer.md
 │   ├── code-reviewer.md
@@ -53,10 +54,21 @@ claude-engineering-toolkit/
 │   ├── dependency-upgrader.md
 │   ├── test-author.md
 │   ├── perf-regression-hunter.md
-│   └── security-auditor.md
+│   ├── security-auditor.md
+│   └── schema-migration-reviewer.md
+├── workflows/               # Workflow scripts shipped with the plugin
+│   ├── ship-it.workflow.js
+│   ├── incident-triage.workflow.js
+│   └── dependency-rotation.workflow.js
+├── templates/               # Starter scaffolds for new artifacts
+│   ├── skill-template/
+│   ├── agent-template.md
+│   └── workflow-template.js
+├── hooks/                   # Git hook examples that run skills headlessly
+│   └── pre-push
 ├── examples/                # Runnable, fixture-backed demos
 │   └── buggy-javascript/
-├── scripts/validate.mjs     # Structural checks run in CI (npm run validate)
+├── scripts/                 # validate.mjs + check-workflows.mjs, run in CI (npm run validate)
 ├── docs/                    # Contributing guide and conventions
 │   └── CONTRIBUTING.md
 ├── .claude-plugin/          # plugin.json + marketplace.json for /plugin install
@@ -91,14 +103,14 @@ claude-engineering-toolkit/
 |---|---|---|---|
 | [`javascript-debugger`](skills/javascript-debugger/SKILL.md) | Diagnoses JS/TS bugs from a symptom or failing test, finds the root cause, proposes the minimal fix | Manual, or delegated to by `code-reviewer`/`bug-fixer` | ✅ Available |
 | [`pr-description`](skills/pr-description/SKILL.md) | Generates a structured PR description from the diff and linked ticket | Manual (`/pr-description`) | ✅ Available |
-| [`dependency-audit`](skills/dependency-audit/SKILL.md) | Flags outdated or vulnerable dependencies before merge | Pre-push hook | ✅ Available |
-| [`flaky-test-triage`](skills/flaky-test-triage/SKILL.md) | Reruns failing tests N times, classifies flaky vs. real failures | CI failure webhook | ✅ Available |
+| [`dependency-audit`](skills/dependency-audit/SKILL.md) | Flags outdated or vulnerable dependencies before merge | Pre-push ([`hooks/pre-push`](hooks/README.md)) | ✅ Available |
+| [`flaky-test-triage`](skills/flaky-test-triage/SKILL.md) | Reruns failing tests N times, classifies flaky vs. real failures | Manual, or a CI failure job you wire up (`claude -p`) | ✅ Available |
 | [`changelog-entry`](skills/changelog-entry/SKILL.md) | Drafts a CHANGELOG.md entry matching Keep a Changelog format | Manual or pipeline step | ✅ Available |
 | [`migration-planner`](skills/migration-planner/SKILL.md) | Breaks a large refactor into reviewable, sequenced commits, each shipping green | Manual (`/migration-planner`) | ✅ Available |
 | [`postmortem-draft`](skills/postmortem-draft/SKILL.md) | Drafts a blameless incident postmortem with evidence-backed timeline and closable action items | Manual, or the `incident-triage` postmortem stage | ✅ Available |
-| [`test-impact-selector`](skills/test-impact-selector/SKILL.md) | Picks the minimal test subset that covers a diff, and names what it leaves unverified | Pre-push hook | ✅ Available |
+| [`test-impact-selector`](skills/test-impact-selector/SKILL.md) | Picks the minimal test subset that covers a diff, and names what it leaves unverified | Pre-push ([`hooks/pre-push`](hooks/README.md)) | ✅ Available |
 | [`claude-md-generator`](skills/claude-md-generator/SKILL.md) | Generates or refreshes a repo's `CLAUDE.md` from its real build files, CI config and history | Manual (`/claude-md-generator`) | ✅ Available |
-| `commit-splitter` | Splits an oversized working tree into coherent, individually reviewable commits | Manual | 🚧 Planned |
+| [`commit-splitter`](skills/commit-splitter/SKILL.md) | Splits an oversized working tree into coherent, individually reviewable commits, each built and tested | Manual (`/commit-splitter`) | ✅ Available |
 
 Example invocation:
 
@@ -118,7 +130,7 @@ Example invocation:
 | [`test-author`](agents/test-author.md) | Writes missing tests for existing behavior, proving each one by breaking the code it covers | Read, Write, Edit, Bash, Grep, Glob | ✅ Available |
 | [`perf-regression-hunter`](agents/perf-regression-hunter.md) | Bisects a measured performance regression to the commit that introduced it | Read, Grep, Glob, Bash | ✅ Available |
 | [`security-auditor`](agents/security-auditor.md) | Deep audit of a high-risk change — traces untrusted input to sinks, verifies authorization per object | Read, Grep, Glob, Bash | ✅ Available |
-| `schema-migration-reviewer` | Checks a DB migration for lock duration, backfill safety, and rollback path | Read, Bash | 🚧 Planned |
+| [`schema-migration-reviewer`](agents/schema-migration-reviewer.md) | Checks a DB migration for lock duration, backfill safety, deploy-order compatibility, and rollback path | Read, Grep, Glob, Bash | ✅ Available |
 
 Agents are deliberately narrow — each ships with an explicit tool allowlist in its frontmatter so it can be trusted to run with minimal supervision.
 
@@ -126,9 +138,11 @@ Agents are deliberately narrow — each ships with an explicit tool allowlist in
 
 | Workflow | Stages | Use case |
 |---|---|---|
-| `ship-it` | Lint → Build → Test → Review → Commit → PR | Standard feature branch, gated all the way to an open PR |
-| `incident-triage` | Reproduce → Root-cause → Patch → Verify → Postmortem draft | Sentry/PagerDuty-triggered hotfix |
-| `dependency-rotation` | Audit → Upgrade → Test → Changelog → PR | Scheduled dependency maintenance |
+| [`ship-it`](workflows/ship-it.workflow.js) | Lint → Build → Test → Review → Commit → PR | Standard feature branch, gated all the way to an open PR (`{openPr: true}`) |
+| [`incident-triage`](workflows/incident-triage.workflow.js) | Reproduce → Patch (root-cause + fix) → Verify → Postmortem draft | Sentry/PagerDuty-triggered hotfix; stops before commit (`{issue: "..."}`) |
+| [`dependency-rotation`](workflows/dependency-rotation.workflow.js) | Audit → Upgrade → Test → Changelog → PR | Scheduled dependency maintenance, one package per run |
+
+Workflows are Claude Code Workflow scripts that ship with the plugin. Run one by asking Claude to "run the ship-it workflow". Each gate fails closed: a stage that fails, or whose result can't be read, stops the run. Agents are called as `engineering-toolkit:<agent>`. If you copied the agents into `.claude/agents` instead, pass `{agentNamespace: ""}`.
 
 ```
 ship-it.workflow.js
@@ -142,9 +156,9 @@ ship-it.workflow.js
 
 | Template | Scaffolds | Notes |
 |---|---|---|
-| `skill-template/` | A new skill directory with `SKILL.md` + example fixtures | Fill in `description` and `Instructions` |
-| `agent-template.md` | A new subagent with frontmatter pre-filled | Requires explicit `tools:` list |
-| `workflow-template.js` | A new gated pipeline definition | Stages default to fail-closed |
+| [`skill-template/`](templates/skill-template/SKILL.md) | A new skill directory with `SKILL.md` + example fixtures | Fill in `description` and `Instructions` |
+| [`agent-template.md`](templates/agent-template.md) | A new subagent with frontmatter pre-filled | Requires explicit `tools:` list |
+| [`workflow-template.js`](templates/workflow-template.js) | A new gated pipeline definition | Stages default to fail-closed |
 
 ```yaml
 ---

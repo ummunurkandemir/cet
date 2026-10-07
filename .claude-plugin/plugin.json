@@ -6,5 +6,18 @@
     "name": "Claude Engineering Toolkit contributors"
   },
   "license": "MIT",
-  "keywords": ["skills", "agents", "code-review", "debugging", "testing", "release", "incident"]
+  "keywords": [
+    "skills",
+    "agents",
+    "code-review",
+    "debugging",
+    "testing",
+    "release",
+    "incident"
+  ],
+  "workflows": [
+    "./workflows/ship-it.workflow.js",
+    "./workflows/incident-triage.workflow.js",
+    "./workflows/dependency-rotation.workflow.js"
+  ]
 }

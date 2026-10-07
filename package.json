@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "validate": "node scripts/validate.mjs"
+    "validate": "node scripts/validate.mjs && node scripts/check-workflows.mjs"
   }
 }

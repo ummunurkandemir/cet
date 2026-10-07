@@ -16,8 +16,4 @@ jobs:
       - name: Validate skills, agents, README, links and manifests
         run: node scripts/validate.mjs
       - name: Syntax-check workflow scripts
-        run: |
-          shopt -s nullglob
-          for f in workflows/*.js templates/*.js; do
-            node --check --input-type=module < "$f" || { echo "syntax error in $f"; exit 1; }
-          done
+        run: node scripts/check-workflows.mjs

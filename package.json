@@ -1,0 +1,8 @@
+{
+  "name": "claude-engineering-toolkit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate.mjs && node scripts/check-workflows.mjs"
+  }
+}

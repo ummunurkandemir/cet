@@ -46,25 +46,19 @@ claude-engineering-toolkit/
 │   ├── postmortem-draft/
 │   ├── test-impact-selector/
 │   └── claude-md-generator/
-├── agents/                  # Subagent definitions (AGENT.md with frontmatter)
-│   ├── bug-fixer/
-│   ├── code-reviewer/
-│   ├── release-notes-writer/
-│   ├── dependency-upgrader/
-│   ├── test-author/
-│   ├── perf-regression-hunter/
-│   └── security-auditor/
-├── workflows/                 # Multi-step pipelines (workflow.js / .yaml)
-│   ├── ship-it.workflow.js
-│   └── incident-triage.workflow.js
-├── templates/                # Starter scaffolds for new artifacts
-│   ├── skill-template/
-│   ├── agent-template.md
-│   └── workflow-template.js
-├── examples/                  # Runnable, fixture-backed demos
-│   ├── legacy-migration/
-│   └── onboarding-new-service/
-├── docs/                     # Conventions, style guide, versioning policy
+├── agents/                  # Subagent definitions, one flat <name>.md per agent
+│   ├── bug-fixer.md
+│   ├── code-reviewer.md
+│   ├── release-notes-writer.md
+│   ├── dependency-upgrader.md
+│   ├── test-author.md
+│   ├── perf-regression-hunter.md
+│   └── security-auditor.md
+├── examples/                # Runnable, fixture-backed demos
+│   └── buggy-javascript/
+├── docs/                    # Contributing guide and conventions
+│   └── CONTRIBUTING.md
+├── LICENSE
 └── README.md
 ```
 
@@ -115,13 +109,13 @@ Example invocation:
 
 | Agent | Role | Tools | Status |
 |---|---|---|---|
-| [`bug-fixer`](agents/bug-fixer/AGENT.md) | Root-causes a failing test or error report and proposes a minimal fix | Read, Edit, Bash | ✅ Available |
-| [`code-reviewer`](agents/code-reviewer/AGENT.md) | Independent second opinion on a diff; flags correctness and convention drift | Read, Grep, Glob, Bash | ✅ Available |
-| [`release-notes-writer`](agents/release-notes-writer/AGENT.md) | Summarizes merged PRs since last tag into user-facing notes | Read, Bash | ✅ Available |
-| [`dependency-upgrader`](agents/dependency-upgrader/AGENT.md) | Bumps a single dependency, runs the test suite, reverts on failure | Read, Bash | ✅ Available |
-| [`test-author`](agents/test-author/AGENT.md) | Writes missing tests for existing behavior, proving each one by breaking the code it covers | Read, Write, Edit, Bash, Grep, Glob | ✅ Available |
-| [`perf-regression-hunter`](agents/perf-regression-hunter/AGENT.md) | Bisects a measured performance regression to the commit that introduced it | Read, Grep, Glob, Bash | ✅ Available |
-| [`security-auditor`](agents/security-auditor/AGENT.md) | Deep audit of a high-risk change — traces untrusted input to sinks, verifies authorization per object | Read, Grep, Glob, Bash | ✅ Available |
+| [`bug-fixer`](agents/bug-fixer.md) | Root-causes a failing test or error report and proposes a minimal fix | Read, Edit, Bash | ✅ Available |
+| [`code-reviewer`](agents/code-reviewer.md) | Independent second opinion on a diff; flags correctness and convention drift | Read, Grep, Glob, Bash | ✅ Available |
+| [`release-notes-writer`](agents/release-notes-writer.md) | Summarizes merged PRs since last tag into user-facing notes | Read, Bash | ✅ Available |
+| [`dependency-upgrader`](agents/dependency-upgrader.md) | Bumps a single dependency, runs the test suite, reverts on failure | Read, Bash | ✅ Available |
+| [`test-author`](agents/test-author.md) | Writes missing tests for existing behavior, proving each one by breaking the code it covers | Read, Write, Edit, Bash, Grep, Glob | ✅ Available |
+| [`perf-regression-hunter`](agents/perf-regression-hunter.md) | Bisects a measured performance regression to the commit that introduced it | Read, Grep, Glob, Bash | ✅ Available |
+| [`security-auditor`](agents/security-auditor.md) | Deep audit of a high-risk change — traces untrusted input to sinks, verifies authorization per object | Read, Grep, Glob, Bash | ✅ Available |
 | `schema-migration-reviewer` | Checks a DB migration for lock duration, backfill safety, and rollback path | Read, Bash | 🚧 Planned |
 
 Agents are deliberately narrow — each ships with an explicit tool allowlist in its frontmatter so it can be trusted to run with minimal supervision.
@@ -146,22 +140,25 @@ ship-it.workflow.js
 
 | Template | Scaffolds | Notes |
 |---|---|---|
-| `skill-template/` | A new skill directory with `SKILL.md` + example fixtures | Fill in `trigger` and `steps` |
+| `skill-template/` | A new skill directory with `SKILL.md` + example fixtures | Fill in `description` and `Instructions` |
 | `agent-template.md` | A new subagent with frontmatter pre-filled | Requires explicit `tools:` list |
 | `workflow-template.js` | A new gated pipeline definition | Stages default to fail-closed |
 
 ```yaml
 ---
-name: my-new-skill
-description: One-line summary of when this skill fires
-trigger: manual   # manual | pre-commit | pre-push | ci-webhook
+name: my-new-skill            # must equal the directory name
+description: What it does and when to use it (not a sibling). Claude matches on this.
+allowed-tools: Read, Bash, Grep, Glob
 ---
 ```
 
+Claude Code has no `trigger:` frontmatter field. A skill is picked up when its `description` matches the request, or when you call it directly with `/my-new-skill`. "Pre-push hook" and "CI webhook" in the tables above mean you wire the skill into a hook or CI job yourself.
+
 ## 🧪 Example Use Cases
 
-- **Onboarding a new service** — `examples/onboarding-new-service` reads a service's `go.mod`/`package.json` and generates a starter `CLAUDE.md`.
-- **Legacy migration** — `examples/legacy-migration` walks a Vue 2 component through `migration-planner` to split a 1,200-line file into reviewable chunks.
+- **Catching a real bug in review** — [`examples/buggy-javascript`](examples/buggy-javascript/README.md) runs `code-reviewer` on a ten-line function with an off-by-one bug and compares the result against a reference review.
+- **Onboarding a new service** — run `claude-md-generator` in the service repo to get a starter `CLAUDE.md` built from its real build files.
+- **Legacy migration** — `migration-planner` splits a 1,200-line component migration into reviewable, individually green commits.
 - **Automated hotfix** — `incident-triage` reproduces a Sentry error, drafts a patch via `bug-fixer`, and stops for approval before commit.
 - **Dependency hygiene** — `dependency-rotation` upgrades one package per run on a weekly cron, opening a PR only if tests stay green.
 
@@ -177,14 +174,15 @@ cp agents/bug-fixer.md ~/.claude/agents/
 
 # Or scope it to a single repo instead of globally
 cp -r skills/pr-description /path/to/your-repo/.claude/skills/
+cp agents/bug-fixer.md /path/to/your-repo/.claude/agents/
 ```
 
-The skill then becomes available via its trigger (e.g. `/pr-description`) or fires automatically if it's hook-based.
+Once installed, a skill can be called directly (e.g. `/pr-description`), and Claude also picks it up when a request matches its `description`. Agents appear under `/agents`, and you can ask Claude to use one by name.
 
 ## ✅ Best Practices
 
 - **Name skills after the outcome, not the mechanism** — `flaky-test-triage`, not `rerun-tests-script`.
-- **Give every agent an explicit tool allowlist.** `Tools: All tools` is a debugging convenience, not something to ship.
+- **Give every agent an explicit tool allowlist.** `tools: *` is a debugging convenience, not something to ship.
 - **Keep workflows fail-closed** — a stage that can't determine pass/fail should block, not skip.
 - **Version fixtures alongside the skill.** One without a runnable example is one nobody will trust enough to adopt.
 - **Document the trigger precisely.** Vague triggers ("when relevant") fire unpredictably or not at all.
@@ -206,7 +204,7 @@ Contributions are welcome — new skills, agent refinements, and workflow fixes 
 3. Include at least one fixture demonstrating it works end-to-end.
 4. Open a PR describing the trigger condition and expected behavior, with the real-world case that motivated it.
 
-See `docs/CONTRIBUTING.md` for the full style guide.
+See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) for the full style guide and new-artifact checklist.
 
 ## 📜 License
 

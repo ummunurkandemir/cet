@@ -58,6 +58,7 @@ claude-engineering-toolkit/
 │   └── buggy-javascript/
 ├── docs/                    # Contributing guide and conventions
 │   └── CONTRIBUTING.md
+├── .claude-plugin/          # plugin.json + marketplace.json for /plugin install
 ├── LICENSE
 └── README.md
 ```
@@ -163,6 +164,19 @@ Claude Code has no `trigger:` frontmatter field. A skill is picked up when its `
 - **Dependency hygiene** — `dependency-rotation` upgrades one package per run on a weekly cron, opening a PR only if tests stay green.
 
 ## ⚡ Getting Started
+
+### As a plugin (recommended)
+
+Everything in the repo installs as the `engineering-toolkit` plugin. Inside a Claude Code session:
+
+```
+/plugin marketplace add your-org/claude-engineering-toolkit   # or a local path: /plugin marketplace add ./claude-engineering-toolkit
+/plugin install engineering-toolkit@engineering-toolkit
+```
+
+Plugin skills are namespaced, for example `/engineering-toolkit:pr-description`.
+
+### Copying individual pieces
 
 ```bash
 git clone https://github.com/your-org/claude-engineering-toolkit.git
